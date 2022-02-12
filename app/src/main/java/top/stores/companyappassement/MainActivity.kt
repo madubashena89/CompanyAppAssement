@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
                     companyDetailList.company = gson.fromJson(payLoad.toString(), groupListType)
                     companyList.companies?.forEach {first ->
                         companyDetailList.company?.forEach { second ->
-                            if (first.companyID.equals(second.companyDetailsID)){
+                            if (first.companyID == second.companyDetailsID){
                                 companyAdapter = CompanyAdapter( this?.applicationContext,  companyList.companies,  companyDetailList.company)
                                 val llm = LinearLayoutManager(this)
                                 llm.orientation = LinearLayoutManager.VERTICAL
