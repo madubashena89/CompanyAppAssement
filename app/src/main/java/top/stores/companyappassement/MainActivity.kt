@@ -1,44 +1,118 @@
 package top.stores.companyappassement
 
-import androidx.appcompat.app.AppCompatActivity
+import android.app.Application
 import android.os.Bundle
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import android.util.Log
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import top.stores.companyappassement.R
+import com.android.volley.Request
+import com.android.volley.Response
+import com.android.volley.toolbox.JsonArrayRequest
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
+import org.json.JSONException
+import org.json.JSONObject
+import top.stores.companyappassement.models.CompanyDetailsList
+import top.stores.companyappassement.models.CompanyDetailsPojo
+import top.stores.companyappassement.models.CompanyList
+import top.stores.companyappassement.models.CompanyListPojo
+import top.stores.companyappassement.networkCalls.VolleySingleton
+import java.lang.reflect.Type
+import java.util.*
+
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var viewModel : MainActivityViewModel
-    private lateinit var sportsAdapter : CompanyAdapter
+    private lateinit var companyAdapter : CompanyAdapter
     private lateinit var recyclerView : RecyclerView
-    private var companyTempID = 0
+    private var companyList: CompanyList = CompanyList()
+    private var companyDetailList: CompanyDetailsList = CompanyDetailsList()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        viewModel = ViewModelProviders.of(this).get<MainActivityViewModel>(MainActivityViewModel::class.java)
         recyclerView = findViewById(R.id.companyRecyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
+        fetchCompanyData(this.application)
+        fetchCompanyDetailsData(this.application)
 
-        viewModel.getSCompanies(this.application)?.observe(this, Observer {firstList ->
-            firstList.forEach {
-                it.companyID = companyTempID
-                viewModel.getSCompaniesDetails(this.application)?.observe(this, Observer {secondList ->
-                    secondList.forEach {
-                        if (it.companyDetailsID == companyTempID)
-                            sportsAdapter = CompanyAdapter( this?.applicationContext, firstList,secondList )
-                        val llm = LinearLayoutManager(this.applicationContext)
-                        llm.orientation = LinearLayoutManager.VERTICAL
-                        recyclerView.setLayoutManager(llm)
-                        recyclerView.adapter=sportsAdapter
+    }
+
+    fun fetchCompanyData(application: Application) {
+        val COMPANY_URL = "https://jsonplaceholder.typicode.com/users"
+        val request = JsonArrayRequest(
+            Request.Method.GET, // method
+            COMPANY_URL, // url
+            null, {
+                val response = it
+                Log.d("Response ", "$it")
+                try {
+                    val payLoad = it
+                    val gson = GsonBuilder().create()
+                    val groupListType: Type =
+                        object : TypeToken<ArrayList<CompanyListPojo>>() {}.type
+                    companyList.companies = gson.fromJson(payLoad.toString(), groupListType)
+
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                }
+            },
+            Response.ErrorListener {
+                Log.d("Response", "$it")
+                Toast.makeText(
+                    application.applicationContext,
+                    "Sorry Something went wrong from our end when loading the Companies!!",
+                    Toast.LENGTH_LONG
+                ).show()
+
+            })
+        VolleySingleton.getInstance(application.applicationContext).addToRequestQueue(request)
+    }
+
+
+    fun fetchCompanyDetailsData(application: Application) {
+        val COMPANY_DETAIL_URL = "https://jsonplaceholder.typicode.com/posts"
+        val request = JsonArrayRequest(
+            Request.Method.POST, // method
+            COMPANY_DETAIL_URL, // url
+            null, {
+                val response = it
+                Log.d("RESPONSERwee", "fetchCompanyDetailsData: $it")
+                try {
+                    val payLoad = it
+                    val gson = GsonBuilder().create()
+                    val groupListType: Type =
+                        object : TypeToken<ArrayList<CompanyDetailsPojo>>() {}.type
+                    companyDetailList.company = gson.fromJson(payLoad.toString(), groupListType)
+                    companyList.companies?.forEach {first ->
+                        companyDetailList.company?.forEach { second ->
+                            if (first.companyID.equals(second.companyDetailsID)){
+                                companyAdapter = CompanyAdapter( this?.applicationContext,  companyList.companies,  companyDetailList.company)
+                                val llm = LinearLayoutManager(this)
+                                llm.orientation = LinearLayoutManager.VERTICAL
+                                recyclerView.setLayoutManager(llm)
+                                recyclerView.adapter = companyAdapter
+                            }
+                        }
                     }
-                })
-            }
-        })
 
 
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                }
+            },
+            Response.ErrorListener {
+                Log.d("ErrorResponse", "fetchCompanyDetailsData: $it")
+                Toast.makeText(
+                    application.applicationContext,
+                    "Sorry Something went wrong from our end when loading the Companies!!",
+                    Toast.LENGTH_LONG
+                ).show()
+
+            })
+        VolleySingleton.getInstance(application.applicationContext).addToRequestQueue(request)
     }
 }
